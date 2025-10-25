@@ -11,11 +11,9 @@ pipeline {
     string(name: 'version', description: 'enter your application version')
   }
   environment {
-    appVersion = ''  //this is global varible we can use any where inthe pipeline
     region = 'us-east-1'
     account_id = '688567303455'
     project = 'expense'
-    env_name = ''
     component = 'backend'
   }
 
@@ -23,11 +21,12 @@ pipeline {
     stage('Setup Environment') {
         steps {
             script {
-                // Initialize global environment variables from pipeline parameters
-                // This makes them available in all stages (like Helm deploy)
+                 // Assign Jenkins parameters to environment variables
                 env.env_name = params.ENVIRONMENT
                 env.appVersion = params.version
-                echo "Selected environment: ${env.env_name}, App version: ${env.appVersion}"
+                
+                echo "Selected environment: ${env.env_name}"
+                echo "App version: ${env.appVersion}"
             }
         }
     }
