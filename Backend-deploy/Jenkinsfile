@@ -1,0 +1,65 @@
+pipeline {
+  agent {
+    label 'AGENT-1'
+  }
+  options {
+    timeout(time: 5, unit: 'MINUTES')
+    disableConcurrentBuilds()
+  }
+  parameters { 
+    choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'uat', 'pre-prod', 'prod'], description: 'Select your environment')
+    string(name: 'version', description: 'enter your application version')
+  }
+  environment {
+    appVersion = ''  //this is global varible we can use any where inthe pipeline
+    region = 'us-east-1'
+    account_id = '688567303455'
+    project = 'expense'
+    env_name = ''
+    component = 'backend'
+  }
+
+  stages{
+    stage('Setup Environment') {
+        steps {
+            script {
+                // Initialize global environment variables from pipeline parameters
+                // This makes them available in all stages (like Helm deploy)
+                env.env_name = params.ENVIRONMENT
+                env.appVersion = params.version
+                echo "Selected environment: ${env.env_name}, App version: ${env.appVersion}"
+            }
+        }
+    }
+    stage('Deploy'){
+      steps {
+        withAWS(region: 'us-east-1', credentials: 'aws-creds'){
+          dir('Backend-deploy/helm') {
+            sh """
+              # Update kubeconfig for the target EKS cluster
+              aws eks update-kubeconfig --region ${region} --name ${project}-${env.env_name}
+
+              # Replace IMAGE_VERSION in helm values file with the exact app version
+              sed -i 's/IMAGE_VERSION/${env.appVersion}/g' values-${env.env_name}.yaml
+
+              # Deploy using Helm
+              helm upgrade --install ${component} -n ${project} -f values-${env.env_name}.yaml .
+            """
+          }
+        }
+      }
+    }
+  }
+  post {
+    always {
+      echo 'This section always runs!'
+      deleteDir() //in jenkins this function will delete the workspace directory of the job on the agent (VM/container)
+    }
+    success {
+      echo 'This section runs when pipeline sucess'
+    }
+    failure {
+      echo 'This section runs when pipeline failed' 
+    }
+  }
+}
