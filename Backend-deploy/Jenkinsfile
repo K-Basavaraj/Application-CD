@@ -1,14 +1,20 @@
 pipeline {
   agent {
+    // CI waits until CD finishes
     label 'AGENT-1'
   }
   options {
-    timeout(time: 5, unit: 'MINUTES')
-    disableConcurrentBuilds()
+    timeout(time: 5, unit: 'MINUTES') // Stop deployment if it hangs
+    disableConcurrentBuilds() // Prevent two deployments at same time
   }
+
+  // Parameters passed to CD
+  // These come either:
+  // 1. From CI trigger OR
+  // 2. Manual "Build with Parameters"
   parameters { 
     choice(name: 'ENVIRONMENT', choices: ['dev', 'qa', 'uat', 'pre-prod', 'prod'], description: 'Select your environment')
-    string(name: 'version', description: 'enter your application version')
+    string(name: 'version', description: 'enter your application version to deploy')
   }
   environment {
     region = 'us-east-1'
@@ -20,28 +26,35 @@ pipeline {
   stages{
     stage('Setup Environment') {
         steps {
-            script {
-                 // Assign Jenkins parameters to environment variables
-                env.env_name = params.ENVIRONMENT
-                env.appVersion = params.version
-                
-                echo "Selected environment: ${env.env_name}"
-                echo "App version: ${env.appVersion}"
-            }
+          script {
+            /*
+            Assign Jenkins parameters to environment variables.
+            This makes them globally available in later stages.
+             */
+            env.env_name = params.ENVIRONMENT
+            env.appVersion = params.version
+            
+            echo "Selected environment: ${env.env_name}"
+            echo "App version: ${env.appVersion}"
+          }
         }
     }
     stage('Deploy'){
       steps {
+        // Authenticate with AWS using Jenkins credentials
         withAWS(region: 'us-east-1', credentials: 'aws-creds'){
+          // Move into Helm chart directory
           dir('Backend-deploy/helm') {
             sh """
               # Update kubeconfig for the target EKS cluster
+              # Example: expense-dev, expense-qa, expense-prod
               aws eks update-kubeconfig --region ${region} --name ${project}-${env.env_name}
 
               # Replace IMAGE_VERSION in helm values file with the exact app version
+              # values-dev.yaml / values-qa.yaml / etc
               sed -i 's/IMAGE_VERSION/${env.appVersion}/g' values-${env.env_name}.yaml
 
-              # Deploy using Helm
+              # Deploy or upgrade application using Helm
               helm upgrade --install ${component} -n ${project} -f values-${env.env_name}.yaml .
             """
           }
