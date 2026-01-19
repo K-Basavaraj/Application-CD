@@ -52,7 +52,10 @@ pipeline {
 
               # Replace IMAGE_VERSION in helm values file with the exact app version
               # values-dev.yaml / values-qa.yaml / etc
-              sed -i 's/IMAGE_VERSION/${env.appVersion}/g' values-${env.env_name}.yaml
+              sed -i "s/IMAGE_VERSION/${env.appVersion}/g" values-${env.env_name}.yaml
+
+              # Verify replacement
+              cat values-${env.env_name}.yaml
 
               # Deploy or upgrade application using Helm
               helm upgrade --install ${component} -n ${project} -f values-${env.env_name}.yaml .
