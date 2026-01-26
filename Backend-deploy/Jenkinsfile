@@ -18,7 +18,7 @@ pipeline {
   }
   environment {
     region = 'us-east-1'
-    account_id = '688567303455'
+    account_id = ''
     project = 'expense'
     component = 'backend'
   }
@@ -36,6 +36,8 @@ pipeline {
             
             echo "Selected environment: ${env.env_name}"
             echo "App version: ${env.appVersion}"
+
+            account_id = pipelineGlobals.getAccountID(environment)
           }
         }
     }
