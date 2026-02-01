@@ -37,7 +37,11 @@ pipeline {
             echo "Selected environment: ${env.env_name}"
             echo "App version: ${env.appVersion}"
 
-            account_id = pipelineGlobals.getAccountID(environment)
+            account_id = pipelineGlobals.getAccountID(env.env_name)
+
+            echo "Environment  : ${env.env_name}"
+            echo "App Version  : ${env.appVersion}"
+            echo "Account ID  : ${account_id}"
           }
         }
     }
